@@ -16,7 +16,22 @@ const users = [
     email: "john@example.com",
     password: "54321",
   }
-]
+];
+
+const todos = [
+  {
+    title: "Learn GraphQL",
+    by: "asdasdasdasdsdfsfs"
+  },
+  {
+    title: "Build a GraphQL API",
+    by: "sdfsfdsfsafsfsadfsd"
+  },
+  {
+    title: "Profit",
+    by: "asdasdasdasdsdfsfs"
+  }
+];
 
 const typeDefs = gql`
   type Query {
@@ -38,18 +53,36 @@ const typeDefs = gql`
     firstName: String
     lastName: String
     email: String
+    todos: [Todo]
+  }
+
+  type Todo {
+    title: String!
+    by: ID!
   }
 `;
 
 const resolvers = {
   Query: {
-    users: () => users,
-    user: (parent, args, context) => {
-      return users.find(item => item.id == args.id);
+    users: (_, __, { userLoggedIn }) => {
+      if (!userLoggedIn) {
+        throw new Error("User not authenticated");
+      }
+      return users;
+    },
+    user: (_, { id }, { userLoggedIn }) => {
+      if (!userLoggedIn) {
+        throw new Error("User not authenticated");
+      }
+      return users.find(user => user.id === id);
     }
   },
+  User: {
+    todos: (parent) => todos.filter(todo => todo.by === parent.id)
+  },
   Mutation: {
-    createUser: (_, { firstName, lastName, email, password }) => {
+    createUser: (_, { firstName, lastName, email, password }, context) => {
+      console.log("Context in Mutation:", context);
       const newUser = {
         id: randomUUID(),
         firstName,
@@ -61,10 +94,14 @@ const resolvers = {
       return newUser;
     }
   }
-}
+};
 
-const server = new ApolloServer({ typeDefs, resolvers });
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  context: { userLoggedIn: true }
+});
 
 server.listen().then(({ url }) => {
-  console.log(`🚀  Server ready at ${url}`);
+  console.log(`🚀 Server ready at ${url}`);
 });
